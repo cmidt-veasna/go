@@ -8,6 +8,7 @@ import (
 	"cmd/compile/internal/syntax"
 	"cmd/compile/internal/types"
 	"fmt"
+	"strings"
 )
 
 func (p *noder) funcLit(expr *syntax.FuncLit) *Node {
@@ -26,7 +27,54 @@ func (p *noder) funcLit(expr *syntax.FuncLit) *Node {
 	xfunc.Func.Closure = clo
 	clo.Func.Closure = xfunc
 
+	previousRes := p.funcRTS
+	rs := expr.Type.ResultList
+	p.funcRTS = make([]string, len(rs))
+	var getType func(t syntax.Expr) string
+	getType = func(t syntax.Expr) string {
+		switch v := t.(type) {
+		case *syntax.Name:
+			return v.Value
+
+		case *syntax.ArrayType:
+			return fmt.Sprintf("[]%v", getType(v.Len))
+
+		case *syntax.SliceType:
+			return fmt.Sprintf("[]%v", getType(v.Elem))
+
+		case *syntax.MapType:
+			return fmt.Sprintf("map[%s]%s", getType(v.Key), getType(v.Value))
+
+		case *syntax.SelectorExpr:
+			return fmt.Sprintf("%s.%s", v.X.(*syntax.Name).Value, v.Sel.Value)
+
+		case *syntax.Operation:
+			return fmt.Sprintf("*%s", getType(v.X))
+
+		case *syntax.InterfaceType:
+			return "interface{}"
+
+		case *syntax.FuncType:
+			args := make([]string, len(v.ParamList))
+			for i, fl := range v.ParamList {
+				args[i] = getType(fl.Type)
+			}
+			results := make([]string, len(v.ResultList))
+			for i, fl := range v.ResultList {
+				results[i] = getType(fl.Type)
+			}
+			return fmt.Sprintf("func(%s)%s", strings.Join(args, ","), strings.Join(results, ","))
+
+		}
+		panic(fmt.Sprintf("unknown type expression %v", t.(*syntax.Name)))
+	}
+	for i, n := range rs {
+		p.funcRTS[i] = getType(n.Type)
+	}
+
 	p.funcBody(xfunc, expr.Body)
+
+	p.funcRTS = previousRes
 
 	// closure-specific variables are hanging off the
 	// ordinary ones in the symbol table; see oldname.

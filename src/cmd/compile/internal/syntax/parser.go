@@ -20,6 +20,9 @@ type parser struct {
 	mode Mode
 	scanner
 
+	errorReturnIndex int
+	curFunReturn     []*Field
+
 	base   *PosBase // current position base
 	first  error    // first error encountered
 	errcnt int      // number of errors encountered
@@ -617,6 +620,20 @@ func (p *parser) funcDeclOrNil() *FuncDecl {
 
 	f.Name = p.name()
 	f.Type = p.funcType()
+
+	p.errorReturnIndex = -1
+	p.curFunReturn = f.Type.ResultList
+	for i, fi := range p.curFunReturn {
+		if name, ok := fi.Type.(*Name); ok && name.Value == "error" {
+			p.errorReturnIndex = i
+			break
+		}
+	}
+	defer func() {
+		p.curFunReturn = nil
+		p.errorReturnIndex = -1
+	}()
+
 	if p.tok == _Lbrace {
 		f.Body = p.funcBody()
 	}
@@ -1617,6 +1634,16 @@ func (p *parser) simpleStmt(lhs Expr, keyword token) SimpleStmt {
 		lhs = p.exprList()
 	}
 
+	if keyword != 0 {
+		if ls, ok := lhs.(*ListExpr); ok {
+			for _, ex := range ls.ElemList {
+				if me, ok := ex.(*MagicExpr); ok {
+					p.errorAt(me.pos, "magic syntax is not allowed.")
+				}
+			}
+		}
+	}
+
 	if _, ok := lhs.(*ListExpr); !ok && p.tok != _Assign && p.tok != _Define {
 		// expr
 		pos := p.pos()
@@ -2247,17 +2274,49 @@ func (p *parser) exprList() Expr {
 		defer p.trace("exprList")()
 	}
 
+	var list []Expr
+	var magicCount int
+
 	x := p.expr()
+retrace:
 	if p.got(_Comma) {
-		list := []Expr{x, p.expr()}
+		if list == nil {
+			list = []Expr{x, p.expr()}
+		} else {
+			list = append(list, p.expr())
+		}
 		for p.got(_Comma) {
 			list = append(list, p.expr())
 		}
+	}
+
+	npa := p.got(_NilPanic)
+	nth := npa || p.got(_NilThrow)
+
+	if nth {
+		if list == nil {
+			list = []Expr{x}
+		}
+		name := list[len(list)-1].(*Name)
+		if npa && p.errorReturnIndex == -1 {
+			p.errorAt(name.pos, "magic syntax require an error as part of return function")
+		} else {
+			if magicCount > 0 {
+				p.errorAt(name.pos, "multiple magic syntax is forbidden")
+			}
+			list = append(list, &MagicExpr{Panic: npa, Name: name})
+			magicCount++
+			goto retrace
+		}
+	}
+
+	if len(list) > 0 {
 		t := new(ListExpr)
 		t.pos = x.Pos()
 		t.ElemList = list
 		x = t
 	}
+
 	return x
 }
 

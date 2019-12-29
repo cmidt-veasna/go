@@ -33,6 +33,12 @@ type Node struct {
 	Type *types.Type
 	Orig *Node // original form, for printing, and tracking copies of ONAMEs
 
+	MagicReNil     *Node
+	MagicExpr      *Node
+	MagicExprIndex int
+	MagicStmt      *Node
+	MagicStmtIndex int
+
 	// func
 	Func *Func
 

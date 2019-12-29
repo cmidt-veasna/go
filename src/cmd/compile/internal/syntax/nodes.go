@@ -135,6 +135,12 @@ type (
 		expr
 	}
 
+	//
+	MagicExpr struct {
+		Panic      bool
+		*Name
+	}
+
 	// Value
 	BasicLit struct {
 		Value string

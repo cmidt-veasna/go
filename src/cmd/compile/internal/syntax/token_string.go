@@ -4,9 +4,64 @@ package syntax
 
 import "strconv"
 
-const _token_name = "EOFnameliteralopop=opop=:=<-*([{)]},;:....breakcasechanconstcontinuedefaultdeferelsefallthroughforfuncgogotoifimportinterfacemappackagerangereturnselectstructswitchtypevar"
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[_EOF-1]
+	_ = x[_Name-2]
+	_ = x[_Literal-3]
+	_ = x[_Operator-4]
+	_ = x[_AssignOp-5]
+	_ = x[_IncOp-6]
+	_ = x[_Assign-7]
+	_ = x[_Define-8]
+	_ = x[_Arrow-9]
+	_ = x[_Star-10]
+	_ = x[_NilPanic-11]
+	_ = x[_NilThrow-12]
+	_ = x[_Lparen-13]
+	_ = x[_Lbrack-14]
+	_ = x[_Lbrace-15]
+	_ = x[_Rparen-16]
+	_ = x[_Rbrack-17]
+	_ = x[_Rbrace-18]
+	_ = x[_Comma-19]
+	_ = x[_Semi-20]
+	_ = x[_Colon-21]
+	_ = x[_Dot-22]
+	_ = x[_DotDotDot-23]
+	_ = x[_Break-24]
+	_ = x[_Case-25]
+	_ = x[_Chan-26]
+	_ = x[_Const-27]
+	_ = x[_Continue-28]
+	_ = x[_Default-29]
+	_ = x[_Defer-30]
+	_ = x[_Else-31]
+	_ = x[_Fallthrough-32]
+	_ = x[_For-33]
+	_ = x[_Func-34]
+	_ = x[_Go-35]
+	_ = x[_Goto-36]
+	_ = x[_If-37]
+	_ = x[_Import-38]
+	_ = x[_Interface-39]
+	_ = x[_Map-40]
+	_ = x[_Package-41]
+	_ = x[_Range-42]
+	_ = x[_Return-43]
+	_ = x[_Select-44]
+	_ = x[_Struct-45]
+	_ = x[_Switch-46]
+	_ = x[_Type-47]
+	_ = x[_Var-48]
+	_ = x[tokenCount-49]
+}
 
-var _token_index = [...]uint8{0, 3, 7, 14, 16, 19, 23, 24, 26, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 42, 47, 51, 55, 60, 68, 75, 80, 84, 95, 98, 102, 104, 108, 110, 116, 125, 128, 135, 140, 146, 152, 158, 164, 168, 171, 171}
+const _token_name = "EOFnameliteralopop=opop=:=<-*!?([{)]},;:....breakcasechanconstcontinuedefaultdeferelsefallthroughforfuncgogotoifimportinterfacemappackagerangereturnselectstructswitchtypevar"
+
+var _token_index = [...]uint8{0, 3, 7, 14, 16, 19, 23, 24, 26, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 44, 49, 53, 57, 62, 70, 77, 82, 86, 97, 100, 104, 106, 110, 112, 118, 127, 130, 137, 142, 148, 154, 160, 166, 170, 173, 173}
 
 func (i token) String() string {
 	i -= 1

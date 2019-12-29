@@ -307,14 +307,24 @@ redo:
 		s.tok = _Assign
 
 	case '!':
-		if s.getr() == '=' {
+		r := s.getr()
+		if r == '=' {
 			s.op, s.prec = Neq, precCmp
 			s.tok = _Operator
+			break
+		} else if r == ' ' || r == '\t' || r == ',' {
+			s.op, s.prec = Not, 0
+			s.tok = _NilPanic
+			s.ungetr()
 			break
 		}
 		s.ungetr()
 		s.op, s.prec = Not, 0
 		s.tok = _Operator
+
+	case '?':
+		s.op, s.prec = Opt, 0
+		s.tok = _NilThrow
 
 	default:
 		s.tok = 0

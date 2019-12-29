@@ -26,6 +26,9 @@ const (
 	_Arrow    // <-
 	_Star     // *
 
+	_NilPanic  // !
+	_NilThrow  // ?
+
 	// delimiters
 	_Lparen    // (
 	_Lbrack    // [
@@ -114,6 +117,7 @@ const (
 	Def  // :
 	Not  // !
 	Recv // <-
+	Opt  // ?
 
 	// precOrOr
 	OrOr // ||

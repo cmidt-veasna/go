@@ -23,7 +23,7 @@ func TestSizeof(t *testing.T) {
 		{Func{}, 124, 224},
 		{Name{}, 32, 56},
 		{Param{}, 24, 48},
-		{Node{}, 76, 128},
+		{Node{}, 76, 184},
 	}
 
 	for _, tt := range tests {

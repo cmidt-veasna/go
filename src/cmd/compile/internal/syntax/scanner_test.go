@@ -248,6 +248,9 @@ var sampleTokens = [...]struct {
 	{_Dot, ".", 0, 0},
 	{_DotDotDot, "...", 0, 0},
 
+	{_NilPanic, "!", 0, 0},
+	{_NilThrow, "?", 0, 0},
+
 	// keywords
 	{_Break, "break", 0, 0},
 	{_Case, "case", 0, 0},
@@ -674,6 +677,20 @@ func TestIssue33961(t *testing.T) {
 
 		if !got.bad {
 			t.Errorf("%q: got error but bad not set", lit)
+		}
+	}
+}
+
+func TestMagic(t *testing.T) {
+	var scanner scanner
+	n := 0
+	scanner.init(strings.NewReader("err! := "), func(line, col uint, msg string) {
+		n++
+	}, 0)
+	for {
+		scanner.next()
+		if scanner.tok == _EOF {
+			break
 		}
 	}
 }

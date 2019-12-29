@@ -612,6 +612,15 @@ func Main(archInit func(*Arch)) {
 		errorexit()
 	}
 
+	timings.Start("magic", "transform magic syntax")
+	for i := 0; i < len(xtop); i++ {
+		n := xtop[i]
+		if op := n.Op; op == ODCLFUNC || op == OCLOSURE {
+			Curfn = n
+		}
+		transformmagicRoof(n)
+	}
+
 	// Phase 4: Decide how to capture closed variables.
 	// This needs to run before escape analysis,
 	// because variables captured by value do not escape.

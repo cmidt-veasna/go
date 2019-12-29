@@ -136,6 +136,11 @@ type noder struct {
 	err        chan syntax.Error
 	scope      ScopeID
 
+	magicIndex     int
+	magicExpr      *syntax.MagicExpr
+	magicCheckExpr syntax.Expr
+	funcRTS        []string
+
 	// scopeVars is a stack tracking the number of variables declared in the
 	// current function at the moment each open scope was opened.
 	scopeVars []int
@@ -471,6 +476,13 @@ func (p *noder) funcDecl(fun *syntax.FuncDecl) *Node {
 	t := p.signature(fun.Recv, fun.Type)
 	f := p.nod(fun, ODCLFUNC, nil, nil)
 
+	rs := t.Rlist.Slice()
+	p.funcRTS = make([]string, len(rs))
+	for i, n := range rs {
+		p.funcRTS[i] = fmt.Sprintf("%v", n.Left)
+	}
+	defer func() { p.funcRTS = nil }()
+
 	if fun.Recv == nil {
 		if name.Name == "init" {
 			name = renameinit()
@@ -591,7 +603,13 @@ func (p *noder) exprList(expr syntax.Expr) []*Node {
 
 func (p *noder) exprs(exprs []syntax.Expr) []*Node {
 	nodes := make([]*Node, 0, len(exprs))
-	for _, expr := range exprs {
+	for i, expr := range exprs {
+		if me, ok := expr.(*syntax.MagicExpr); ok {
+			p.magicIndex = i - 1
+			p.magicExpr = me
+			p.magicCheckExpr = exprs[i-1]
+			continue
+		}
 		nodes = append(nodes, p.expr(expr))
 	}
 	return nodes
@@ -913,6 +931,26 @@ func (p *noder) stmtsFall(stmts []syntax.Stmt, fallOK bool) []*Node {
 		} else {
 			nodes = append(nodes, s)
 		}
+		if s != nil && p.magicExpr != nil {
+			me, mcex, index := p.magicExpr, p.magicCheckExpr, p.magicIndex
+			p.magicCheckExpr = nil
+			p.magicIndex = -1
+			p.magicExpr = nil
+
+			ifStmt := syntax.CreateIfMagicStatement(mcex, me, p.funcRTS)
+			// Appropriate message will be replace after type check
+			errCall := syntax.NewCallErrorStatementFormat(mcex)
+
+			// try to import package before parsing
+			importPackage()
+
+			s.MagicReNil = p.declName(syntax.NewNilName(mcex))
+			s.MagicExprIndex = index
+			s.MagicStmt = p.ifStmt(ifStmt)
+			s.MagicExpr = p.expr(errCall)
+			s.MagicStmtIndex = len(nodes)
+
+		}
 	}
 	return nodes
 }
@@ -1047,11 +1085,19 @@ func (p *noder) assignList(expr syntax.Expr, defn *Node, colas bool) []*Node {
 
 	res := make([]*Node, len(exprs))
 	seen := make(map[*types.Sym]bool, len(exprs))
+	magicIndex := -1
 
 	newOrErr := false
 	for i, expr := range exprs {
 		p.setlineno(expr)
 		res[i] = nblank
+
+		if me, ok := expr.(*syntax.MagicExpr); ok {
+			magicIndex = i - 1
+			p.magicExpr = me
+			p.magicCheckExpr = exprs[i-1]
+			continue
+		}
 
 		name, ok := expr.(*syntax.Name)
 		if !ok {
@@ -1061,6 +1107,7 @@ func (p *noder) assignList(expr syntax.Expr, defn *Node, colas bool) []*Node {
 		}
 
 		sym := p.name(name)
+
 		if sym.IsBlank() {
 			continue
 		}
@@ -1083,6 +1130,12 @@ func (p *noder) assignList(expr syntax.Expr, defn *Node, colas bool) []*Node {
 		n.Name.Defn = defn
 		defn.Ninit.Append(nod(ODCL, n, nil))
 		res[i] = n
+	}
+
+	// magic index never begin the statement 1 at least
+	p.magicIndex = magicIndex
+	if magicIndex >= 0 {
+		res = append(res[:magicIndex+1], res[magicIndex+2:]...)
 	}
 
 	if !newOrErr {
@@ -1238,6 +1291,25 @@ func (p *noder) commClauses(clauses []*syntax.CommClause, rbrace syntax.Pos) []*
 		if clause.Comm != nil {
 			n.List.Set1(p.stmt(clause.Comm))
 		}
+
+		if p.magicExpr != nil {
+			me, mcex, index := p.magicExpr, p.magicCheckExpr, p.magicIndex
+			p.magicCheckExpr = nil
+			p.magicIndex = -1
+			p.magicExpr = nil
+
+			ifStmt := syntax.CreateIfMagicStatement(mcex, me, p.funcRTS)
+			errCall := syntax.NewCallErrorStatement(mcex, "channel has been closed")
+
+			importPackage()
+
+			n.MagicReNil = p.declName(syntax.NewNilName(mcex))
+			n.MagicExprIndex = index
+			n.MagicStmt = p.ifStmt(ifStmt)
+			n.MagicExpr = p.expr(errCall)
+			n.MagicStmtIndex = 0
+		}
+
 		n.Nbody.Set(p.stmts(clause.Body))
 		nodes = append(nodes, n)
 	}
